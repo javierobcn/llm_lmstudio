@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="llm_publisher_lmstudio" model="llm.publisher">
+        <field name="name">LM Studio</field>
+        <field name="official" eval="True" />
+        <field name="frontier" eval="False" />
+        <field
+      name="description"
+    >LM Studio is a local-first application that lets you run and serve open models on your own hardware through an OpenAI-compatible API.</field>
+        <field name="meta">{
+            "website": "https://lmstudio.ai",
+            "key_features": ["Local Inference", "OpenAI-Compatible API", "Desktop Model Management"]
+            }</field>
+    </record>
+</odoo>
