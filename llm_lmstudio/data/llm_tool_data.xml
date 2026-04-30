@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo noupdate="1">
+    <record id="llm_tool_odoo_record_aggregator" model="llm.tool">
+        <field name="name">odoo_record_aggregator</field>
+        <field name="implementation">odoo_record_aggregator</field>
+        <field name="description"><![CDATA[
+Aggregate records from any Odoo model using ORM read_group for analytics queries.
+Use this tool for totals and metrics such as sum, avg, min, max, and count.
+
+Typical use cases:
+- "What is the sum of expenses this month?"
+- "Average invoice amount by salesperson"
+- "Count of leads by stage"
+
+Parameters:
+- model: Odoo model name (for example, account.move.line)
+- domain: Odoo domain filter
+- aggregates: list of read_group aggregate expressions (for example, ["amount_total:sum", "id:count"])
+- groupby: optional group-by fields
+- limit/orderby/lazy: optional read_group behavior controls
+        ]]></field>
+        <field name="default" eval="True" />
+        <field name="active" eval="True" />
+        <field name="requires_user_consent" eval="False" />
+        <field name="read_only_hint" eval="True" />
+        <field name="idempotent_hint" eval="True" />
+        <field name="destructive_hint" eval="False" />
+        <field name="open_world_hint" eval="False" />
+    </record>
+</odoo>

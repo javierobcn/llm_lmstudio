@@ -13,6 +13,10 @@ DomainValue = Union[DomainScalar, list[DomainScalar]]
 class LLMTool(models.Model):
     _inherit = "llm.tool"
 
+    def _get_available_implementations(self):
+        implementations = super()._get_available_implementations()
+        return implementations + [("odoo_record_aggregator", "Odoo Record Aggregator")]
+
     def _parse_structured_string(self, value):
         """Parse stringified list/dict payloads sent by some clients."""
         if not isinstance(value, str):
@@ -136,3 +140,44 @@ class LLMTool(models.Model):
             field_name_filter=field_name_filter,
             field_type_filter=field_type_filter,
         )
+
+    def odoo_record_aggregator_execute(
+        self,
+        model: str,
+        domain: list[list[DomainValue]] = [],  # noqa: B006
+        aggregates: list[str] = [],  # noqa: B006
+        groupby: list[str] = [],  # noqa: B006
+        limit: int = 100,
+        orderby: Optional[str] = None,
+        lazy: bool = True,
+    ) -> dict[str, Any]:
+        """Run grouped aggregations through ORM read_group (sum/avg/min/max/count)."""
+        if model not in self.env:
+            return {"error": f"Model '{model}' not found in Odoo environment"}
+
+        if not aggregates:
+            return {
+                "error": "Parameter 'aggregates' is required and must contain at least one aggregation expression"
+            }
+
+        model_obj = self.env[model]
+        normalized_domain = list(domain) if isinstance(domain, tuple) else (domain or [])
+        normalized_groupby = list(groupby) if isinstance(groupby, tuple) else (groupby or [])
+
+        result = model_obj.read_group(
+            domain=normalized_domain,
+            fields=aggregates,
+            groupby=normalized_groupby,
+            limit=limit,
+            orderby=orderby or False,
+            lazy=lazy,
+        )
+
+        return {
+            "model": model,
+            "domain": normalized_domain,
+            "aggregates": aggregates,
+            "groupby": normalized_groupby,
+            "rows": json.loads(json.dumps(result, default=str)),
+            "row_count": len(result),
+        }

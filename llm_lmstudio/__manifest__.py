@@ -12,6 +12,7 @@
     "depends": ["llm_openai", "llm_tool", "llm_thread"],
     "data": [
         "data/llm_publisher.xml",
+        "data/llm_tool_data.xml",
     ],
     "license": "LGPL-3",
     "installable": True,
