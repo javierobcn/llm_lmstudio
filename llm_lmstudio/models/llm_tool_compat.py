@@ -1,9 +1,13 @@
 import ast
 import inspect
 import json
-from typing import get_origin, get_type_hints
+from typing import Any, Optional, Union, get_origin, get_type_hints
 
 from odoo import models
+
+
+DomainScalar = Union[str, int, bool, float, None]
+DomainValue = Union[DomainScalar, list[DomainScalar]]
 
 
 class LLMTool(models.Model):
@@ -62,3 +66,73 @@ class LLMTool(models.Model):
                 normalized[param_name] = list(parsed) if isinstance(parsed, tuple) else parsed
 
         return super().execute(normalized)
+
+    def odoo_record_retriever_execute(
+        self,
+        model: str,
+        domain: list[list[DomainValue]] = [],  # noqa: B006
+        fields: list[str] = [],  # noqa: B006
+        limit: int = 100,
+    ) -> dict[str, Any]:
+        """Allow domain values such as ['field', 'in', ['a', 'b']] in schema."""
+        return super().odoo_record_retriever_execute(
+            model=model,
+            domain=domain,
+            fields=fields,
+            limit=limit,
+        )
+
+    def odoo_record_updater_execute(
+        self,
+        model: str,
+        domain: list[list[DomainValue]],
+        values: dict[str, Any],
+        limit: int = 1,
+    ) -> dict[str, Any]:
+        """Allow list-valued domain operands in updater schema."""
+        return super().odoo_record_updater_execute(
+            model=model,
+            domain=domain,
+            values=values,
+            limit=limit,
+        )
+
+    def odoo_record_unlinker_execute(
+        self,
+        model: str,
+        domain: list[list[DomainValue]],
+        limit: int = 1,
+    ) -> dict[str, Any]:
+        """Allow list-valued domain operands in unlinker schema."""
+        return super().odoo_record_unlinker_execute(
+            model=model,
+            domain=domain,
+            limit=limit,
+        )
+
+    def odoo_model_inspector_execute(
+        self,
+        model: str,
+        include_fields: bool = True,
+        include_methods: bool = False,
+        field_limit: int = 20,
+        method_limit: int = 10,
+        include_private: bool = False,
+        method_name_filter: Optional[str] = None,
+        method_type_filter: Optional[list[str]] = None,
+        field_name_filter: Optional[str] = None,
+        field_type_filter: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        """Keep safer inspector defaults while reusing apexive implementation."""
+        return super().odoo_model_inspector_execute(
+            model=model,
+            include_fields=include_fields,
+            include_methods=include_methods,
+            field_limit=field_limit,
+            method_limit=method_limit,
+            include_private=include_private,
+            method_name_filter=method_name_filter,
+            method_type_filter=method_type_filter,
+            field_name_filter=field_name_filter,
+            field_type_filter=field_type_filter,
+        )
