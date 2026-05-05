@@ -14,6 +14,12 @@
         "data/llm_publisher.xml",
         "data/llm_tool_data.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "llm_lmstudio/static/src/patches/chatter_upload_fix.js",
+            "llm_lmstudio/static/src/xml/chatter_uploader_fix.xml",
+        ],
+    },
     "license": "LGPL-3",
     "installable": True,
 }

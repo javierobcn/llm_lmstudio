@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<templates>
+    <t t-inherit="llm_thread.ChatterAIExtension" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o-mail-AttachmentBox')]//FileUploader" position="attributes">
+            <attribute name="onUploaded">onUploaded(undefined, { thread: state.thread })</attribute>
+            <attribute name="t-key">state.thread.localId</attribute>
+        </xpath>
+    </t>
+</templates>
