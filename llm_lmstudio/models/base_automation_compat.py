@@ -1,9 +1,84 @@
-from odoo import fields, models
+from odoo import api, fields, models
 from odoo.tools import safe_eval
 
 
 class BaseAutomation(models.Model):
     _inherit = "base.automation"
+
+    def _get_llm_resource_name(self, record):
+        self.ensure_one()
+        if hasattr(record, "display_name") and record.display_name:
+            return record.display_name
+        if hasattr(record, "name") and record.name:
+            return record.name
+        return f"{self.model_id.name} #{record.id}"
+
+    def _register_hook(self):
+        result = super()._register_hook()
+        automations = self.sudo().search(
+            [
+                ("llm_collection_id", "!=", False),
+                ("trigger", "in", ["on_create", "on_write", "on_unlink"]),
+            ]
+        )
+        automations._ensure_llm_automation_action()
+        return result
+
+    def _is_llm_knowledge_automation(self):
+        self.ensure_one()
+        return bool(
+            self.llm_collection_id
+            and self.trigger in {"on_create", "on_write", "on_unlink"}
+        )
+
+    def _get_llm_automation_action_vals(self):
+        self.ensure_one()
+        return {
+            "name": self.name,
+            "model_id": self.model_id.id,
+            "state": "code",
+            "code": (
+                "env['base.automation'].browse(%d)._process_llm_update(records)" % self.id
+            ),
+        }
+
+    def _find_llm_automation_action(self):
+        self.ensure_one()
+        return self.action_server_ids.filtered(
+            lambda action: action.state == "code"
+            and action.code
+            and "._process_llm_update(records)" in action.code
+        )[:1]
+
+    def _ensure_llm_automation_action(self):
+        for automation in self:
+            if not automation._is_llm_knowledge_automation():
+                continue
+
+            vals = automation._get_llm_automation_action_vals()
+            llm_action = automation._find_llm_automation_action()
+
+            if llm_action:
+                llm_action.write(vals)
+            else:
+                vals["base_automation_id"] = automation.id
+                self.env["ir.actions.server"].create(vals)
+
+            if automation.state != "code":
+                automation.with_context(skip_llm_action_sync=True).write({"state": "code"})
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        automations = super().create(vals_list)
+        if not automations.env.context.get("skip_llm_action_sync"):
+            automations._ensure_llm_automation_action()
+        return automations
+
+    def write(self, vals):
+        result = super().write(vals)
+        if not self.env.context.get("skip_llm_action_sync"):
+            self._ensure_llm_automation_action()
+        return result
 
     def _process_llm_update(self, records):
         self.ensure_one()
@@ -30,22 +105,21 @@ class BaseAutomation(models.Model):
             existing_doc = self.env["llm.resource"].search(
                 [("model_id", "=", model_id), ("res_id", "=", record.id)], limit=1
             )
+            resource_name = self._get_llm_resource_name(record)
 
             if existing_doc:
+                values = {}
+                if existing_doc.name != resource_name:
+                    values["name"] = resource_name
                 if collection.id not in existing_doc.collection_ids.ids:
-                    existing_doc.write({"collection_ids": [(4, collection.id)]})
+                    values["collection_ids"] = [(4, collection.id)]
+                if values:
+                    existing_doc.write(values)
             else:
-                if hasattr(record, "display_name") and record.display_name:
-                    name = record.display_name
-                elif hasattr(record, "name") and record.name:
-                    name = record.name
-                else:
-                    name = f"{self.model_id.name} #{record.id}"
-
                 # Do not auto-process here; this automation should only sync membership.
                 self.env["llm.resource"].create(
                     {
-                        "name": name,
+                        "name": resource_name,
                         "model_id": model_id,
                         "res_id": record.id,
                         "collection_ids": [(4, collection.id)],
@@ -66,6 +140,10 @@ class BaseAutomation(models.Model):
         return True
 
     def _process(self, records, domain_post=None):
+        if self.state == "llm_update":
+            self._ensure_llm_automation_action()
+            self.invalidate_recordset(["state"])
+
         if self.state != "llm_update":
             return super()._process(records, domain_post=domain_post)
 

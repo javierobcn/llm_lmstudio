@@ -25,6 +25,7 @@
             "llm_lmstudio/static/src/xml/chatter_uploader_fix.xml",
         ],
     },
+    "post_init_hook": "post_init_hook",
     "license": "LGPL-3",
     "installable": True,
 }
